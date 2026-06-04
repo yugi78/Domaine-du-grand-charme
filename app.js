@@ -449,7 +449,7 @@ const createScene = async function () {
             } else {
                 groundCam.angularSensibility = 3000; // Précision souris PC
 		// 💻 FOV PC : Valeur par défaut standard (0.8) ou légèrement optimisée (0.9)
-                groundCam.fov = 3;
+                groundCam.fov = 0.9;
             }
 
             if (isNavMeshReady && navigationPlugin) {
