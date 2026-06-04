@@ -6,6 +6,11 @@
     <title>Visualiseur 3D Hybride</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
+	#renderCanvas {
+    width: 100%;
+    height: 100%;
+    touch-action: none; /* 👈 CRUCIAL : Dit à iOS de laisser Babylon gérer les mouvements de doigts */
+}
         html, body {
             overflow: hidden;
             width: 100%; height: 100%;

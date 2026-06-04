@@ -435,6 +435,18 @@ const createScene = async function () {
             scene.activeCamera = groundCam;
             groundCam.attachControl(canvas, true);
 
+// ⚡ 2. AJOUT : On configure les inputs maintenant qu'ils sont rattachés au canvas
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                groundCam.angularSensibility = 1000; // Sensibilité tactile réactive
+                
+                // On force le module Souris à écouter vos doigts sur l'écran
+                if (groundCam.inputs.attached.mouse) {
+                    groundCam.inputs.attached.mouse.touchEnabled = true;
+                }
+            } else {
+                groundCam.angularSensibility = 3000; // Précision souris PC
+            }
+
             if (isNavMeshReady && navigationPlugin) {
                 try {
                     const sp = navigationPlugin.getClosestPoint(new BABYLON.Vector3(0, 2, 0));
