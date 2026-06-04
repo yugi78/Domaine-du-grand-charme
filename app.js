@@ -296,18 +296,50 @@ const createScene = async function () {
     
     // ⚡ NOUVEAU : Application de l'optimisation progressive si le nuage est chargé
     if (groundSplatting) {
-        groundSplatting.setEnabled(false); // Reste désactivé par défaut au démarrage (vue drone)
+        groundSplatting.setEnabled(false); // Désactivé par défaut (vue drone)
 
-        // On attend une micro-seconde que le matériau soit bien instancié par Babylon
-        setTimeout(() => {
-            if (groundSplatting.material) {
-                // On attache notre plugin de densité au matériau du splatting
-                new SplatDensityPlugin(groundSplatting.material);
-                // On force le shader à se recompiler avec notre code
-                groundSplatting.material.markAsDirty(BABYLON.Material.TextureDirtyFlag);
-                console.log("🚀 Optimisation de densité progressive activée sur le nuage Sol !");
+        // On écoute le moment où le mesh est prêt à être rendu
+        groundSplatting.onBeforeRenderObservable.add(() => {
+            const mat = groundSplatting.material;
+            
+            // Si le matériau existe et qu'on ne l'a pas encore hacké
+            if (mat && !mat._isHackedForDensity) {
+                
+                // On intercepte la compilation du shader pour modifier le code source GLSL
+                mat.customShaderNameResolve = function (shaderName, uniforms, samplers, defines, attributes, options) {
+                    
+                    // On s'assure que Babylon utilise bien le gestionnaire de shaders custom
+                    options.processFinalCode = (type, code) => {
+                        if (type === "fragment") {
+                            console.log("🎯 Injection GLSL réussie dans le Fragment Shader !");
+                            
+                            // On cherche le début de la fonction principale et on injecte notre dither
+                            const injection = `
+                                void main(void) {
+                                    float distanceToCam = 1.0 / gl_FragCoord.w;
+                                    float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+                                    
+                                    // PALIERS DE TEST AGRESSIFS
+                                    if (distanceToCam > 3.0) {
+                                        if (pseudoRandom > 0.15) discard; // On jette 85% des points !
+                                    } else if (distanceToCam > 1.0) {
+                                        if (pseudoRandom > 0.50) discard; // On jette 50% des points !
+                                    }
+                            `;
+                            
+                            // On remplace le "void main(void) {" d'origine par notre bloc
+                            return code.replace("void main(void) {", injection);
+                        }
+                        return code;
+                    };
+                    return shaderName;
+                };
+
+                // On force le matériau à se recompiler immédiatement avec notre modification
+                mat.markAsDirty(BABYLON.Material.TextureDirtyFlag);
+                mat._isHackedForDensity = true; // Pour éviter de boucler à l'infini
             }
-        }, 50);
+        });
     } // 🔍 FIX : Bloc if refermé correctement ici
     
     hideLoading();
