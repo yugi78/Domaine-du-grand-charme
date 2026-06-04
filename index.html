@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualiseur 3D Hybride</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            overflow: hidden;
+            width: 100%; height: 100%;
+            margin: 0; padding: 0;
+            background: #080810;
+            font-family: 'Courier New', monospace;
+        }
+        #renderCanvas {
+            width: 100%; height: 100%;
+            touch-action: none;
+            outline: none;
+            display: block;
+        }
+
+        /* ── UI ── */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 22px;
+            background: rgba(8, 8, 20, 0.82);
+            color: #a8c4ff;
+            border: 1px solid rgba(100, 140, 255, 0.35);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(8px);
+        }
+        .btn:hover {
+            background: rgba(37, 80, 200, 0.5);
+            border-color: #6094ff;
+            color: #fff;
+        }
+        .btn.active {
+            background: rgba(37, 80, 200, 0.7);
+            border-color: #6094ff;
+            color: #fff;
+            box-shadow: 0 0 16px rgba(96, 148, 255, 0.3);
+        }
+
+        /* ── HINT ── */
+        #hint {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            color: rgba(168, 196, 255, 0.55);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+
+        /* ── LOADING ── */
+        #loading-screen {
+            position: absolute;
+            inset: 0;
+            background: #080810;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 28px;
+            transition: opacity 0.6s ease;
+        }
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-logo {
+            font-size: 11px;
+            letter-spacing: 6px;
+            color: rgba(168, 196, 255, 0.4);
+            text-transform: uppercase;
+        }
+        .loading-container { width: 280px; }
+        #loading-text {
+            color: #a8c4ff;
+            font-size: 12px;
+            margin-bottom: 14px;
+            letter-spacing: 0.8px;
+            text-align: center;
+            min-height: 18px;
+        }
+        .progress-bar-bg {
+            width: 100%;
+            height: 2px;
+            background: rgba(255,255,255,0.07);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        #loading-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3b5bdb, #74c0fc);
+            border-radius: 2px;
+            transition: width 0.15s ease;
+        }
+        .loading-sub {
+            font-size: 10px;
+            color: rgba(168, 196, 255, 0.3);
+            letter-spacing: 2px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* ── CROSSHAIR (vue sol) ── */
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px; height: 16px;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(168, 196, 255, 0.7);
+        }
+        #crosshair::before { width: 1px; height: 100%; left: 50%; top: 0; }
+        #crosshair::after  { width: 100%; height: 1px; top: 50%; left: 0; }
+    </style>
+
+    <!-- === BABYLON CORE === -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <!-- === MESHOPT (compression GLTF) === -->
+    <script src="https://unpkg.com/meshoptimizer@0.21.0/meshopt_decoder.js"></script>
+
+    <!-- === RECAST (NavMesh) === -->
+    <script src="https://cdn.babylonjs.com/recast.js"></script>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loading-logo">Visualiseur 3D</div>
+        <div class="loading-container">
+            <div id="loading-text">Initialisation...</div>
+            <div class="progress-bar-bg">
+                <div id="loading-bar"></div>
+            </div>
+            <div class="loading-sub">Chargement des assets 3D</div>
+        </div>
+    </div>
+
+    <div id="ui-container">
+        <button id="btn-drone" class="btn active">&#9650; Vue Drone</button>
+        <button id="btn-ground" class="btn">&#9654; Vue Sol</button>
+    </div>
+
+    <div id="hint">Vue Drone — Clic + glisser pour orbiter · Scroll pour zoomer</div>
+    <div id="crosshair"></div>
+
+    <canvas id="renderCanvas"></canvas>
+
+    <script src="app.js"></script>
+</body>
+</html>
