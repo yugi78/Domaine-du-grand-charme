@@ -170,7 +170,7 @@ const createScene = async function () {
     // 2. Ajustement de la vitesse de rotation selon l'appareil
     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
         // Sur Mobile / Tablette : on baisse la valeur pour que ça tourne plus vite
-        groundCam.angularSensibility = 800; 
+        groundCam.angularSensibility = 1500; 
     } else {
         // Sur PC (Souris) : valeur par défaut pour une bonne précision
         groundCam.angularSensibility = 3000; 
