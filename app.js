@@ -302,48 +302,34 @@ if (groundSplatting) {
 
     // ⚡ INJECTION DU SHADER (Appliquée une seule fois à l'init)
     if (groundSplatting.material) {
-    const mat = groundSplatting.material;
-    
-    mat.customShaderNameResolve = function(shaderName, uniforms, samplers, defines, attributes, options) {
-        options.processFinalCode = (type, code) => {
-            if (type === "fragment") {
-                
-                const codeInjecte = `
-                    float distanceToCam = 1.0 / gl_FragCoord.w;
-                    float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-                    
-                    // 🎨 MODE DEBUG : On colorie en ROUGE tout ce qui est à plus de 3 unités
-                    if (distanceToCam > 3.0) {
-                        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Rouge pur
-                        return; // On arrête le shader ici pour forcer l'affichage
-                    } 
-                    // On colorie en BLEU entre 1 et 3 unités
-                    else if (distanceToCam > 1.0) {
-                        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // Bleu pur
-                        return;
-                    }
-                `;
-                
-                // 🎯 L'arme absolue : Une regex qui attrape n'importe quelle variante de "void main()"
-                const regexMain = /void\s+main\s*\([^)]*\)\s*\{/;
-                
-                if (regexMain.test(code)) {
-                    console.log("✅ Shader Sol : 'void main' intercepté avec succès !");
-                    // On insère notre code juste après l'ouverture de la fonction main
-                    return code.replace(regexMain, "void main(void) {\n" + codeInjecte);
-                } else {
-                    console.error("❌ Shader Sol : Impossible de trouver le 'void main'. Voici le code source :");
-                    console.log(code.substring(0, 500)); // Affiche le début du shader pour comprendre
-                    return code;
+        const mat = groundSplatting.material;
+        
+        mat.customShaderNameResolve = function(shaderName, uniforms, samplers, defines, attributes, options) {
+            options.processFinalCode = (type, code) => {
+                if (type === "fragment") {
+                    console.log("🎯 Dither Shader injecté dans le SOG Sol !");
+                    const codeInjecte = `
+                        void main(void) {
+                            float distanceToCam = 1.0 / gl_FragCoord.w;
+                            float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+                            
+                            // PALIERS DE TEST ULTRA-AGRESSIFS (3m et 1m)
+                            if (distanceToCam > 3.0) {
+                                if (pseudoRandom > 0.15) discard; // Supprime 85% des points lointains
+                            } else if (distanceToCam > 1.0) {
+                                if (pseudoRandom > 0.50) discard; // Supprime 50% des points intermédiaires
+                            }
+                    `;
+                    return code.replace("void main(void) {", codeInjecte);
                 }
-            }
-            return code;
+                return code;
+            };
+            return shaderName;
         };
-        return shaderName;
-    };
-    
-    // ⚡ On utilise AllDirtyFlag qui est beaucoup plus agressif pour forcer la recompilation
-    mat.markAsDirty(BABYLON.Material.AllDirtyFlag);
+        
+        // On force la recompilation pour que Babylon prenne en compte le hook
+        mat.markAsDirty(BABYLON.Material.TextureDirtyFlag);
+    }
 }
     
     hideLoading();
