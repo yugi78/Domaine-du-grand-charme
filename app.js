@@ -440,7 +440,7 @@ const createScene = async function () {
                 groundCam.angularSensibility = 1000; // Sensibilité tactile réactive
 
 		// 📱 FOV MOBILE : On l'ouvre à 1.1 (~63° vertical) pour un effet grand angle
-                groundCam.fov = 3;
+                groundCam.fov = 3.5;
                 
                 // On force le module Souris à écouter vos doigts sur l'écran
                 if (groundCam.inputs.attached.mouse) {
@@ -449,7 +449,7 @@ const createScene = async function () {
             } else {
                 groundCam.angularSensibility = 3000; // Précision souris PC
 		// 💻 FOV PC : Valeur par défaut standard (0.8) ou légèrement optimisée (0.9)
-                groundCam.fov = 0.8;
+                groundCam.fov = 3;
             }
 
             if (isNavMeshReady && navigationPlugin) {
