@@ -295,8 +295,7 @@ const createScene = async function () {
     // D. Gaussian Splatting — Vue Sol
     setProgress(80, "Chargement du nuage sol…");
     groundSplatting = await loadGaussianSplatting(scene, "./assets/ground_cloud.sog", "groundSplat");
-    if (groundSplatting) groundSplatting.setEnabled(false);
-
+    
     // ⚡ NOUVEAU : Application de l'optimisation progressive si le nuage est chargé
     if (groundSplatting) {
         groundSplatting.setEnabled(false); // Reste désactivé par défaut au démarrage (vue drone)
@@ -311,6 +310,7 @@ const createScene = async function () {
                 console.log("🚀 Optimisation de densité progressive activée sur le nuage Sol !");
             }
         }, 50);
+    } // 👈 IL MANQUAIT CETTE ACCOLADE ICI !
 
     hideLoading();
 
