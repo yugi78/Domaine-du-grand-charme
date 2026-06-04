@@ -16,6 +16,44 @@ const loadingBar    = document.getElementById("loading-bar");
 const hint          = document.getElementById("hint");
 const crosshair     = document.getElementById("crosshair");
 
+
+// ─────────────────────────────────────────────────────────
+// PLUGIN SHADER : Optimisation de la densité des Splats
+// ─────────────────────────────────────────────────────────
+class SplatDensityPlugin extends BABYLON.MaterialPluginBase {
+    constructor(material) {
+        // On enregistre le plugin sous le nom "SplatDensity"
+        super(material, "SplatDensity", 100, { "SPLAT_DENSITY": true });
+    }
+
+    // On injecte notre logique mathématique au début du Fragment Shader
+    getCustomCode(shaderType) {
+        if (shaderType === "fragment") {
+            return {
+                "CUSTOM_FRAGMENT_MAIN_BEGIN": `
+                    // 1. Calcul de la distance linéaire entre la caméra et le pixel (splat)
+                    float distanceToCam = 1.0 / gl_FragCoord.w;
+
+                    // 2. Génération d'un bruit pseudo-aléatoire entre 0.0 et 1.0 propre à chaque pixel
+                    float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+
+                    // 3. Application de tes paliers de distance :
+                    if (distanceToCam > 30.0) {
+                        // Au-delà de 30m : on ne garde que 30% des splats (on rejette les 70% restants)
+                        if (pseudoRandom > 0.30) discard;
+                    } 
+                    else if (distanceToCam > 10.0) {
+                        // Entre 10m et 30m : on garde 70% des splats (on rejette 30%)
+                        if (pseudoRandom > 0.70) discard;
+                    }
+                    // De 0 à 10m : le code continue normalement, affichage à 100%
+                `
+            };
+        }
+        return null;
+    }
+}
+
 // ─────────────────────────────────────────
 // HELPERS chargement
 // ─────────────────────────────────────────
@@ -258,6 +296,21 @@ const createScene = async function () {
     setProgress(80, "Chargement du nuage sol…");
     groundSplatting = await loadGaussianSplatting(scene, "./assets/ground_cloud.sog", "groundSplat");
     if (groundSplatting) groundSplatting.setEnabled(false);
+
+    // ⚡ NOUVEAU : Application de l'optimisation progressive si le nuage est chargé
+    if (groundSplatting) {
+        groundSplatting.setEnabled(false); // Reste désactivé par défaut au démarrage (vue drone)
+
+        // On attend une micro-seconde que le matériau soit bien instancié par Babylon
+        setTimeout(() => {
+            if (groundSplatting.material) {
+                // On attache notre plugin de densité au matériau du splatting
+                new SplatDensityPlugin(groundSplatting.material);
+                // On force le shader à se recompiler avec notre code
+                groundSplatting.material.markAsDirty(BABYLON.Material.TextureDirtyFlag);
+                console.log("🚀 Optimisation de densité progressive activée sur le nuage Sol !");
+            }
+        }, 50);
 
     hideLoading();
 
