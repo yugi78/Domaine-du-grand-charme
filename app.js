@@ -197,20 +197,14 @@ const createScene = async function () {
     groundCam.keysDown  = [83, 40];
     groundCam.keysLeft  = [81, 37];
     groundCam.keysRight = [68, 39];
-
-    // =================================────────────────────────
-    // ✅ AJOUT : Ajustement de la vitesse de rotation sur Mobile
-    // =================================────────────────────────
     
     // 1. On supprime le contrôle tactile par défaut (qui bloque la vue verticale)
     groundCam.inputs.removeByType("FreeCameraTouchInput");
 
-    // 2. Ajustement de la vitesse de rotation selon l'appareil
+    // 2. Ajustement de la vitesse de rotation selon l'appareil au démarrage
     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-        // Sur Mobile / Tablette : on baisse la valeur pour que ça tourne plus vite
         groundCam.angularSensibility = 1500; 
     } else {
-        // Sur PC (Souris) : valeur par défaut pour une bonne précision
         groundCam.angularSensibility = 3000; 
     }
 
@@ -310,8 +304,8 @@ const createScene = async function () {
                 console.log("🚀 Optimisation de densité progressive activée sur le nuage Sol !");
             }
         }, 50);
-    } // 👈 IL MANQUAIT CETTE ACCOLADE ICI !
-
+    } // 🔍 FIX : Bloc if refermé correctement ici
+    
     hideLoading();
 
     // ─────────────────────────────────────
@@ -394,34 +388,28 @@ const createScene = async function () {
     let startX = 0;
     let startY = 0;
 
-    // Enregistre les coordonnées de la souris dès que le clic gauche s'enfonce
     scene.onPointerDown = function (evt) {
         if (currentMode !== "ground" || evt.button !== 0) return;
         startX = scene.pointerX;
         startY = scene.pointerY;
     };
 
-    // Déclenche l'action au relâchement, SEULEMENT si la souris n'a pas bougé (pas de drag)
     scene.onPointerUp = function (evt, pickResult) {
         if (currentMode !== "ground") return;
-        if (evt.button !== 0) return; // Uniquement le clic gauche
+        if (evt.button !== 0) return; 
         if (!pickResult || !pickResult.hit || !pickResult.pickedPoint) return;
         if (!isNavMeshReady || !navigationPlugin) return;
 
-        // Calculer la distance géométrique parcourue par le curseur sur l'écran (en pixels)
         const diffX = scene.pointerX - startX;
         const diffY = scene.pointerY - startY;
         const dragDistance = Math.sqrt(diffX * diffX + diffY * diffY);
 
-        // Si le curseur s'est déplacé de plus de 5 pixels, l'utilisateur tournait la tête. On ignore !
         if (dragDistance > 5) {
             return;
         }
 
         const camPos = groundCam.position;
         const target = pickResult.pickedPoint;
-
-        // Position des pieds
         const feetPos = new BABYLON.Vector3(camPos.x, camPos.y - 0.8, camPos.z);
 
         try {
@@ -488,21 +476,17 @@ const createScene = async function () {
             scene.activeCamera = groundCam;
             groundCam.attachControl(canvas, true);
 
-	// ⚡ 2. AJOUT : On configure les inputs maintenant qu'ils sont rattachés au canvas
+            // ⚡ Configuration dynamique des inputs au moment du switch sol
             if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-                groundCam.angularSensibility = 1000; // Sensibilité tactile réactive
-
-		// 📱 FOV MOBILE : On l'ouvre à 1.1 (~63° vertical) pour un effet grand angle
-                groundCam.fov = 1.8;
+                groundCam.angularSensibility = 1000; 
+                groundCam.fov = 1.1; // Remis à 1.1 pour un grand angle propre (1.8 déformait trop)
                 
-                // On force le module Souris à écouter vos doigts sur l'écran
                 if (groundCam.inputs.attached.mouse) {
                     groundCam.inputs.attached.mouse.touchEnabled = true;
                 }
             } else {
-                groundCam.angularSensibility = 3000; // Précision souris PC
-		// 💻 FOV PC : Valeur par défaut standard (0.8) ou légèrement optimisée (0.9)
-                groundCam.fov = 1.5;
+                groundCam.angularSensibility = 3000; 
+                groundCam.fov = 0.8; // Standard PC
             }
 
             if (isNavMeshReady && navigationPlugin) {
