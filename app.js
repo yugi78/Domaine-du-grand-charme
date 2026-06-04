@@ -440,7 +440,7 @@ const createScene = async function () {
                 groundCam.angularSensibility = 1000; // Sensibilité tactile réactive
 
 		// 📱 FOV MOBILE : On l'ouvre à 1.1 (~63° vertical) pour un effet grand angle
-                groundCam.fov = 3;
+                groundCam.fov = 2;
                 
                 // On force le module Souris à écouter vos doigts sur l'écran
                 if (groundCam.inputs.attached.mouse) {
