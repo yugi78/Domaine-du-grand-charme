@@ -294,51 +294,43 @@ const createScene = async function () {
     droneSplatting = await loadGaussianSplatting(scene, "./assets/drone_cloud.sog", "droneSplat");
 
     // D. Gaussian Splatting — Vue Sol
-    setProgress(80, "Chargement du nuage sol…");
-    groundSplatting = await loadGaussianSplatting(scene, "./assets/ground_cloud.sog", "groundSplat");
-    
-    if (groundSplatting) {
-        groundSplatting.setEnabled(false); // Désactivé par défaut (vue drone)
+setProgress(80, "Chargement du nuage sol…");
+groundSplatting = await loadGaussianSplatting(scene, "./assets/ground_cloud.sog", "groundSplat");
 
-        // 🛠️ HACK ABSOLU : On injecte notre dither directement au cœur du moteur de rendu
-        scene.onBeforeRenderingGroupObservable.add((info) => {
-            // On ne cible que le moment où on s'apprête à dessiner notre nuage Sol
-            if (groundSplatting.isEnabled() && groundSplatting.material) {
-                const mat = groundSplatting.material;
-                
-                if (!mat._shaderHacked) {
-                    // On intercepte la phase de traitement du code GLSL avant compilation
-                    mat.customShaderNameResolve = function(shaderName, uniforms, samplers, defines, attributes, options) {
-                        options.processFinalCode = (type, code) => {
-                            if (type === "fragment") {
-                                console.log("🎯 LOGIQUE SHADER INJECTÉE DIRECTEMENT DANS LE GPU !");
-                                
-                                const codeInjecte = `
-                                    void main(void) {
-                                        float distanceToCam = 1.0 / gl_FragCoord.w;
-                                        float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-                                        
-                                        // PALIERS DE TEST ULTRA-AGRESSIFS (3m et 1m)
-                                        if (distanceToCam > 3.0) {
-                                            if (pseudoRandom > 0.15) discard; // Supprime 85% des points lointains
-                                        } else if (distanceToCam > 1.0) {
-                                            if (pseudoRandom > 0.50) discard; // Supprime 50% des points intermédiaires
-                                        }
-                                `;
-                                return code.replace("void main(void) {", codeInjecte);
+if (groundSplatting) {
+    groundSplatting.setEnabled(false); // Désactivé par défaut (vue drone)
+
+    // ⚡ INJECTION DU SHADER (Appliquée une seule fois à l'init)
+    if (groundSplatting.material) {
+        const mat = groundSplatting.material;
+        
+        mat.customShaderNameResolve = function(shaderName, uniforms, samplers, defines, attributes, options) {
+            options.processFinalCode = (type, code) => {
+                if (type === "fragment") {
+                    console.log("🎯 Dither Shader injecté dans le SOG Sol !");
+                    const codeInjecte = `
+                        void main(void) {
+                            float distanceToCam = 1.0 / gl_FragCoord.w;
+                            float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+                            
+                            // PALIERS DE TEST ULTRA-AGRESSIFS (3m et 1m)
+                            if (distanceToCam > 3.0) {
+                                if (pseudoRandom > 0.15) discard; // Supprime 85% des points lointains
+                            } else if (distanceToCam > 1.0) {
+                                if (pseudoRandom > 0.50) discard; // Supprime 50% des points intermédiaires
                             }
-                            return code;
-                        };
-                        return shaderName;
-                    };
-                    
-                    // On force la recompilation immédiate
-                    mat.markAsDirty(BABYLON.Material.TextureDirtyFlag);
-                    mat._shaderHacked = true;
+                    `;
+                    return code.replace("void main(void) {", codeInjecte);
                 }
-            }
-        });
+                return code;
+            };
+            return shaderName;
+        };
+        
+        // On force la recompilation pour que Babylon prenne en compte le hook
+        mat.markAsDirty(BABYLON.Material.TextureDirtyFlag);
     }
+}
     
     hideLoading();
 
