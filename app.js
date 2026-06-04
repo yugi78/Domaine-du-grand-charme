@@ -22,38 +22,42 @@ const crosshair     = document.getElementById("crosshair");
 // ─────────────────────────────────────────────────────────
 class SplatDensityPlugin extends BABYLON.MaterialPluginBase {
     constructor(material) {
-        // On enregistre le plugin sous le nom "SplatDensity"
         super(material, "SplatDensity", 100, { "SPLAT_DENSITY": true });
     }
 
-    // On injecte notre logique mathématique au début du Fragment Shader
     getCustomCode(shaderType) {
         if (shaderType === "fragment") {
             return {
                 "CUSTOM_FRAGMENT_MAIN_BEGIN": `
-                    // 1. Calcul de la distance linéaire entre la caméra et le pixel (splat)
+                    // 1. Calcul de la distance linéaire caméra -> splat
                     float distanceToCam = 1.0 / gl_FragCoord.w;
 
-                    // 2. Génération d'un bruit pseudo-aléatoire entre 0.0 et 1.0 propre à chaque pixel
+                    // 2. Bruit pseudo-aléatoire pour le dither
                     float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
 
-                    // 3. Application de tes paliers de distance :
-                    if (distanceToCam > 30.0) {
-                        // Au-delà de 30m : on ne garde que 30% des splats (on rejette les 70% restants)
+                    // 3. PALIERS DE TEST TRÈS COURTS :
+                    if (distanceToCam > 3.0) {
+                        // Au-delà de 3 unités : on détruit 70% des splats
                         if (pseudoRandom > 0.30) discard;
                     } 
-                    else if (distanceToCam > 10.0) {
-                        // Entre 10m et 30m : on garde 70% des splats (on rejette 30%)
+                    else if (distanceToCam > 1.0) {
+                        // Entre 1 et 3 unités : on détruit 30% des splats
                         if (pseudoRandom > 0.70) discard;
                     }
-                    // De 0 à 10m : le code continue normalement, affichage à 100%
+                `,
+                // 🎨 TRUCAGE DE DEBUG : On colore les splats lointains pour "voir" les distances du shader
+                "CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR": `
+                    float distDebug = 1.0 / gl_FragCoord.w;
+                    if (distDebug > 3.0) {
+                        // On injecte du rouge dans les zones censées être à plus de 3 unités
+                        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.0, 0.3), 0.4);
+                    }
                 `
             };
         }
         return null;
     }
 }
-
 // ─────────────────────────────────────────
 // HELPERS chargement
 // ─────────────────────────────────────────
