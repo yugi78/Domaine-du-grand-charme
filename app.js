@@ -134,7 +134,11 @@ async function loadGaussianSplatting(scene, url, name) {
         const result = await BABYLON.SceneLoader.ImportMeshAsync("", "", url, scene);
         if (result.meshes.length > 0) {
             console.log(`[SOG] ${name} chargé via SceneLoader`);
-            return result.meshes[0];
+            
+            // 🎯 CORRECTION : On cherche le mesh enfant qui possède le matériau
+            const actualSplatMesh = result.meshes.find(m => m.material != null);
+            
+            return actualSplatMesh ? actualSplatMesh : result.meshes[0];
         }
     } catch (e1) {
         console.warn(`[SOG] SceneLoader échoué pour ${name}:`, e1.message);
@@ -154,7 +158,6 @@ async function loadGaussianSplatting(scene, url, name) {
     console.error(`[SOG] Impossible de charger ${name}`);
     return null;
 }
-
 // ─────────────────────────────────────────
 // 4. SCÈNE PRINCIPALE
 // ─────────────────────────────────────────
