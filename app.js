@@ -154,14 +154,20 @@ const createScene = async function () {
         new BABYLON.Vector3(0, 0.8, 0), scene);
     groundCam.minZ = 0.05;
     groundCam.maxZ = 500;
-    groundCam.angularSensibility = 3000;
+    groundCam.angularSensibility = 3000; // Contrôle la vitesse de la SOURIS (3000 = fluide/précis)
     groundCam.speed = 0;
     groundCam.keysUp    = [90, 38];
     groundCam.keysDown  = [83, 40];
     groundCam.keysLeft  = [81, 37];
     groundCam.keysRight = [68, 39];
 
-    scene.activeCamera = droneCam;
+    // =================================────────────────────────
+    // ✅ AJOUT : Ajustement de la vitesse de rotation sur Mobile
+    // =================================────────────────────────
+    if (groundCam.inputs.attached.touch) {
+        // Par défaut à 2000. On la baisse à 800 (ou moins) pour accélérer le mouvement au doigt
+        groundCam.inputs.attached.touch.touchAngularSensibility = 800; 
+    }
 
     // ─────────────────────────────────────
     // ÉTAT GLOBAL
