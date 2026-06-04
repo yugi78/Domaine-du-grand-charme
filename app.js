@@ -154,7 +154,6 @@ const createScene = async function () {
         new BABYLON.Vector3(0, 0.8, 0), scene);
     groundCam.minZ = 0.05;
     groundCam.maxZ = 500;
-    groundCam.angularSensibility = 3000; // Contrôle la vitesse de la SOURIS (3000 = fluide/précis)
     groundCam.speed = 0;
     groundCam.keysUp    = [90, 38];
     groundCam.keysDown  = [83, 40];
@@ -164,9 +163,17 @@ const createScene = async function () {
     // =================================────────────────────────
     // ✅ AJOUT : Ajustement de la vitesse de rotation sur Mobile
     // =================================────────────────────────
-    if (groundCam.inputs.attached.touch) {
-        // Par défaut à 2000. On la baisse à 800 (ou moins) pour accélérer le mouvement au doigt
-        groundCam.inputs.attached.touch.touchAngularSensibility = 800; 
+    
+    // 1. On supprime le contrôle tactile par défaut (qui bloque la vue verticale)
+    groundCam.inputs.removeByType("FreeCameraTouchInput");
+
+    // 2. Ajustement de la vitesse de rotation selon l'appareil
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        // Sur Mobile / Tablette : on baisse la valeur pour que ça tourne plus vite
+        groundCam.angularSensibility = 800; 
+    } else {
+        // Sur PC (Souris) : valeur par défaut pour une bonne précision
+        groundCam.angularSensibility = 3000; 
     }
 
     // ─────────────────────────────────────
