@@ -294,53 +294,48 @@ const createScene = async function () {
     setProgress(80, "Chargement du nuage sol…");
     groundSplatting = await loadGaussianSplatting(scene, "./assets/ground_cloud.sog", "groundSplat");
     
-    // ⚡ NOUVEAU : Application de l'optimisation progressive si le nuage est chargé
     if (groundSplatting) {
         groundSplatting.setEnabled(false); // Désactivé par défaut (vue drone)
 
-        // On écoute le moment où le mesh est prêt à être rendu
-        groundSplatting.onBeforeRenderObservable.add(() => {
-            const mat = groundSplatting.material;
-            
-            // Si le matériau existe et qu'on ne l'a pas encore hacké
-            if (mat && !mat._isHackedForDensity) {
+        // 🛠️ HACK ABSOLU : On injecte notre dither directement au cœur du moteur de rendu
+        scene.onBeforeRenderingGroupObservable.add((info) => {
+            // On ne cible que le moment où on s'apprête à dessiner notre nuage Sol
+            if (groundSplatting.isEnabled() && groundSplatting.material) {
+                const mat = groundSplatting.material;
                 
-                // On intercepte la compilation du shader pour modifier le code source GLSL
-                mat.customShaderNameResolve = function (shaderName, uniforms, samplers, defines, attributes, options) {
-                    
-                    // On s'assure que Babylon utilise bien le gestionnaire de shaders custom
-                    options.processFinalCode = (type, code) => {
-                        if (type === "fragment") {
-                            console.log("🎯 Injection GLSL réussie dans le Fragment Shader !");
-                            
-                            // On cherche le début de la fonction principale et on injecte notre dither
-                            const injection = `
-                                void main(void) {
-                                    float distanceToCam = 1.0 / gl_FragCoord.w;
-                                    float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-                                    
-                                    // PALIERS DE TEST AGRESSIFS
-                                    if (distanceToCam > 3.0) {
-                                        if (pseudoRandom > 0.15) discard; // On jette 85% des points !
-                                    } else if (distanceToCam > 1.0) {
-                                        if (pseudoRandom > 0.50) discard; // On jette 50% des points !
-                                    }
-                            `;
-                            
-                            // On remplace le "void main(void) {" d'origine par notre bloc
-                            return code.replace("void main(void) {", injection);
-                        }
-                        return code;
+                if (!mat._shaderHacked) {
+                    // On intercepte la phase de traitement du code GLSL avant compilation
+                    mat.customShaderNameResolve = function(shaderName, uniforms, samplers, defines, attributes, options) {
+                        options.processFinalCode = (type, code) => {
+                            if (type === "fragment") {
+                                console.log("🎯 LOGIQUE SHADER INJECTÉE DIRECTEMENT DANS LE GPU !");
+                                
+                                const codeInjecte = `
+                                    void main(void) {
+                                        float distanceToCam = 1.0 / gl_FragCoord.w;
+                                        float pseudoRandom = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+                                        
+                                        // PALIERS DE TEST ULTRA-AGRESSIFS (3m et 1m)
+                                        if (distanceToCam > 3.0) {
+                                            if (pseudoRandom > 0.15) discard; // Supprime 85% des points lointains
+                                        } else if (distanceToCam > 1.0) {
+                                            if (pseudoRandom > 0.50) discard; // Supprime 50% des points intermédiaires
+                                        }
+                                `;
+                                return code.replace("void main(void) {", codeInjecte);
+                            }
+                            return code;
+                        };
+                        return shaderName;
                     };
-                    return shaderName;
-                };
-
-                // On force le matériau à se recompiler immédiatement avec notre modification
-                mat.markAsDirty(BABYLON.Material.TextureDirtyFlag);
-                mat._isHackedForDensity = true; // Pour éviter de boucler à l'infini
+                    
+                    // On force la recompilation immédiate
+                    mat.markAsDirty(BABYLON.Material.TextureDirtyFlag);
+                    mat._shaderHacked = true;
+                }
             }
         });
-    } // 🔍 FIX : Bloc if refermé correctement ici
+    }
     
     hideLoading();
 
